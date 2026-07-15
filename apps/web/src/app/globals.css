@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light dark;
+}
+
+html {
+  @apply bg-ink-50 text-ink-900 antialiased;
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    @apply bg-ink-900 text-ink-50;
+  }
+}
+
+body {
+  @apply min-h-screen;
+}
+
+.prose-rwr h2 {
+  @apply text-2xl font-semibold mt-8 mb-3;
+}
+.prose-rwr h3 {
+  @apply text-lg font-semibold mt-6 mb-2;
+}
+.prose-rwr p {
+  @apply my-3 leading-7;
+}
+.prose-rwr ul {
+  @apply list-disc pl-6 my-3 space-y-1;
+}
+.prose-rwr a {
+  @apply text-accent-600 underline underline-offset-2;
+}
+
+.term {
+  @apply border-b border-dashed border-ink-400 cursor-help;
+}
