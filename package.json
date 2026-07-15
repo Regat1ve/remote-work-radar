@@ -1,0 +1,28 @@
+{
+  "name": "remote-work-radar",
+  "version": "0.0.1",
+  "private": true,
+  "description": "OSS job aggregator for developers locked out of Upwork, Mercor, Deel, and Contra.",
+  "author": "Vitaly Zelenov <vitaly.zelenov13@gmail.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/Regat1ve/remote-work-radar",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Regat1ve/remote-work-radar.git"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @rwr/web dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "db:generate": "pnpm --filter @rwr/db generate",
+    "db:migrate": "pnpm --filter @rwr/db migrate",
+    "db:studio": "pnpm --filter @rwr/db studio",
+    "etl:once": "cd services/etl && python -m remote_work_radar_etl.main --once",
+    "etl:loop": "cd services/etl && python -m remote_work_radar_etl.main --loop"
+  },
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=11"
+  },
+  "packageManager": "pnpm@11.0.8"
+}

@@ -1,0 +1,347 @@
+// remote-work-radar — Prisma schema
+// Every model here has a specific reason. See CLAUDE.md for do/don't rules.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// Source — one row per job board we scrape.
+// -----------------------------------------------------------------------------
+
+model Source {
+  id           String    @id @default(cuid())
+  slug         String    @unique // "weworkremotely", "remoteok", "hn-who-is-hiring"
+  displayName  String
+  homepageUrl  String
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  jobRefs      JobSourceRef[]
+
+  @@map("sources")
+}
+
+// -----------------------------------------------------------------------------
+// Company — deduped by lowercased name. Kept intentionally lean.
+// -----------------------------------------------------------------------------
+
+model Company {
+  id            String   @id @default(cuid())
+  name          String   @unique                    // canonical
+  nameNormalized String  @unique                    // lower(name), stripped punctuation
+  homepageUrl   String?
+  logoUrl       String?
+  hiresGlobally Boolean  @default(false)            // inferred from past postings
+  hasBeenUsOnly Boolean  @default(false)            // watchdog for "global" companies that only hire US
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  jobs          Job[]
+
+  @@map("companies")
+}
+
+// -----------------------------------------------------------------------------
+// Skill — tag entity. Free-form ingest, normalized display.
+// -----------------------------------------------------------------------------
+
+model Skill {
+  id          String    @id @default(cuid())
+  slug        String    @unique                    // "nextjs", "python", "postgres"
+  displayName String                                // "Next.js", "Python", "PostgreSQL"
+  category    SkillCategory @default(OTHER)
+  jobs        JobSkill[]
+
+  @@map("skills")
+}
+
+enum SkillCategory {
+  LANGUAGE
+  FRAMEWORK
+  DATABASE
+  CLOUD
+  AI_ML
+  DEVOPS
+  DESIGN
+  SOFT
+  OTHER
+}
+
+// -----------------------------------------------------------------------------
+// Job — the core entity.
+// -----------------------------------------------------------------------------
+
+model Job {
+  id                String     @id @default(cuid())
+
+  // Identity + dedup
+  dedupKey          String     @unique              // hash(titleNormalized + companyNormalized)
+  titleOriginal     String
+  titleNormalized   String                          // lowercased, punctuation stripped
+  descriptionMd     String                          @db.Text  // normalized to markdown
+  applyUrl          String                                    // canonical URL to apply
+  canonicalUrl      String?                                   // dedup on this if present
+
+  // Company link
+  companyId         String
+  company           Company    @relation(fields: [companyId], references: [id])
+
+  // Geo / timezone gates (parsed at ingest)
+  isUsOnly          Boolean    @default(false)      // "US only", "must be authorized to work in US"
+  isRemoteAnywhere  Boolean    @default(false)      // no geo restriction
+  allowedRegions    String[]   @default([])         // ["EU", "AMERICAS", "APAC"] parsed tags
+  timezoneMinUtcOffset Int?                          // -5 = EST/UTC-5
+  timezoneMaxUtcOffset Int?
+
+  // Compensation
+  hourlyMinUsd      Decimal?   @db.Decimal(10, 2)
+  hourlyMaxUsd      Decimal?   @db.Decimal(10, 2)
+  salaryMinUsd      Decimal?   @db.Decimal(12, 2)
+  salaryMaxUsd      Decimal?   @db.Decimal(12, 2)
+  paymentTypes      PaymentType[] @default([])       // HOURLY, RETAINER, FIXED, SALARIED
+  contractTypes     ContractType[] @default([])      // CONTRACT, PART_TIME, FULL_TIME, INTERNSHIP
+
+  // Beginner-friendliness signals
+  isEntryLevel      Boolean    @default(false)      // "junior", "no experience needed"
+  requiredExperienceYears Int?                       // parsed from "3+ years" etc.
+  hasVisaSponsorship Boolean   @default(false)
+  paymentMethodsHint PaymentMethodHint[] @default([]) // BANK, WISE, PAYONEER, CRYPTO, PAYPAL
+
+  // Trust signals
+  isScamSuspected   Boolean    @default(false)
+  scamReasons       String[]   @default([])         // ["asks for upfront payment", "no company URL", ...]
+  isNsfw            Boolean    @default(false)
+
+  // Skills
+  skills            JobSkill[]
+
+  // Source references (many-to-many via JobSourceRef)
+  sourceRefs        JobSourceRef[]
+
+  // Lifecycle
+  postedAt          DateTime?
+  expiresAt         DateTime?
+  firstSeenAt       DateTime   @default(now())
+  lastSeenAt        DateTime   @default(now())
+  isActive          Boolean    @default(true)       // false when we stop seeing it across sources
+
+  // User relations
+  savedBy           SavedJob[]
+  applications      Application[]
+
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  @@index([isActive, isUsOnly, isEntryLevel])
+  @@index([postedAt(sort: Desc)])
+  @@index([companyId])
+  @@map("jobs")
+}
+
+enum PaymentType {
+  HOURLY
+  RETAINER
+  FIXED
+  SALARIED
+  EQUITY_ONLY  // red flag
+  UNPAID       // red flag
+}
+
+enum ContractType {
+  CONTRACT
+  PART_TIME
+  FULL_TIME
+  INTERNSHIP
+  FREELANCE
+}
+
+enum PaymentMethodHint {
+  BANK_TRANSFER
+  WISE
+  PAYONEER
+  CRYPTO
+  PAYPAL
+  DEEL
+  UNKNOWN
+}
+
+// -----------------------------------------------------------------------------
+// JobSourceRef — where we saw this job. One job can appear on many sources.
+// -----------------------------------------------------------------------------
+
+model JobSourceRef {
+  id           String   @id @default(cuid())
+  jobId        String
+  job          Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  sourceId     String
+  source       Source   @relation(fields: [sourceId], references: [id])
+
+  externalId   String                                    // job id on the source
+  sourceUrl    String                                    // the URL on the source
+  rawSnapshot  Json                                      // original payload — for replay
+  fetchedAt    DateTime @default(now())
+
+  @@unique([sourceId, externalId])
+  @@index([jobId])
+  @@map("job_source_refs")
+}
+
+// -----------------------------------------------------------------------------
+// JobSkill — join table with signal strength (0..1).
+// -----------------------------------------------------------------------------
+
+model JobSkill {
+  jobId     String
+  job       Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  skillId   String
+  skill     Skill  @relation(fields: [skillId], references: [id])
+  strength  Float  @default(1.0)                         // 1.0 = required, 0.5 = nice-to-have
+
+  @@id([jobId, skillId])
+  @@map("job_skills")
+}
+
+// -----------------------------------------------------------------------------
+// User + profile + saves + applications
+// -----------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  image         String?
+
+  // Auth.js standard tables
+  accounts      Account[]
+  sessions      Session[]
+
+  // App-specific
+  profile       UserProfile?
+  saved         SavedJob[]
+  applications  Application[]
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model UserProfile {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Onboarding answers
+  experienceLevel       ExperienceLevel @default(NEVER_REMOTE)
+  targetHourlyMinUsd    Decimal? @db.Decimal(10, 2)
+  targetHourlyMaxUsd    Decimal? @db.Decimal(10, 2)
+  timezoneUtcOffset     Int?                        // user's UTC offset
+  timezoneOverlapMinHours Int    @default(3)         // "I need at least N overlap hours"
+  countryCode           String?                     // ISO-3166 alpha-2
+  isBlockedFromUpwork   Boolean  @default(false)    // used for onboarding messaging
+  skills                String[] @default([])       // skill slugs
+  bio                   String?  @db.Text
+  githubHandle          String?
+  portfolioUrl          String?
+  hasPortfolio          Boolean  @default(false)    // affects cover letter template
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("user_profiles")
+}
+
+enum ExperienceLevel {
+  NEVER_REMOTE          // never worked remote before
+  SOME_REMOTE           // side gigs, occasional
+  EXPERIENCED_REMOTE    // 1+ year full-time remote
+  SENIOR_REMOTE         // 3+ years, comfortable
+}
+
+model SavedJob {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId     String
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  note      String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@unique([userId, jobId])
+  @@index([userId])
+  @@map("saved_jobs")
+}
+
+model Application {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId       String
+  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  status      ApplicationStatus @default(APPLIED)
+  coverLetter String?  @db.Text
+  notes       String?  @db.Text
+  appliedAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, jobId])
+  @@index([userId, status])
+  @@map("applications")
+}
+
+enum ApplicationStatus {
+  APPLIED
+  REPLIED
+  INTERVIEW
+  OFFER
+  REJECTED
+  GHOSTED
+  WITHDRAWN
+}

@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: rwr-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: rwr
+      POSTGRES_PASSWORD: rwr
+      POSTGRES_DB: rwr
+    ports:
+      - "5432:5432"
+    volumes:
+      - rwr-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rwr -d rwr"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  rwr-pgdata:
