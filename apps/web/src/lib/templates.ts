@@ -108,6 +108,3 @@ Available {N} hrs/week, {rate range}, payment via {method}. 20 min this week?
   },
 ];
 
-export function getTemplate(slug: string): CoverLetterTemplate | undefined {
-  return TEMPLATES.find((t) => t.slug === slug);
-}

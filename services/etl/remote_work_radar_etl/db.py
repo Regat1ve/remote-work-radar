@@ -65,8 +65,8 @@ def _source_id(cur: psycopg.Cursor, slug: str) -> str:
 def _upsert_skill(cur: psycopg.Cursor, slug: str) -> str:
     cur.execute(
         """
-        INSERT INTO skills (id, slug, "displayName", category)
-        VALUES (gen_random_uuid()::text, %s, %s, 'OTHER')
+        INSERT INTO skills (id, slug, "displayName")
+        VALUES (gen_random_uuid()::text, %s, %s)
         ON CONFLICT (slug) DO UPDATE SET "displayName" = EXCLUDED."displayName"
         RETURNING id;
         """,
@@ -83,29 +83,29 @@ def _upsert_job(cur: psycopg.Cursor, j: NormalizedJob, company_id: str) -> tuple
         """
         INSERT INTO jobs (
             id, "dedupKey", "titleOriginal", "titleNormalized", "descriptionMd",
-            "applyUrl", "canonicalUrl", "companyId",
+            "applyUrl", "companyId",
             "isUsOnly", "isRemoteAnywhere", "allowedRegions",
             "timezoneMinUtcOffset", "timezoneMaxUtcOffset",
             "hourlyMinUsd", "hourlyMaxUsd", "salaryMinUsd", "salaryMaxUsd",
             "paymentTypes", "contractTypes",
-            "isEntryLevel", "requiredExperienceYears", "hasVisaSponsorship",
+            "isEntryLevel", "requiredExperienceYears",
             "paymentMethodsHint",
-            "isScamSuspected", "scamReasons", "isNsfw",
-            "postedAt", "expiresAt",
+            "isScamSuspected", "scamReasons",
+            "postedAt",
             "firstSeenAt", "lastSeenAt", "isActive",
             "createdAt", "updatedAt"
         )
         VALUES (
             gen_random_uuid()::text, %s, %s, %s, %s,
-            %s, %s, %s,
+            %s, %s,
             %s, %s, %s,
             %s, %s,
             %s, %s, %s, %s,
             %s::"PaymentType"[], %s::"ContractType"[],
-            %s, %s, %s,
-            %s::"PaymentMethodHint"[],
-            %s, %s, %s,
             %s, %s,
+            %s::"PaymentMethodHint"[],
+            %s, %s,
+            %s,
             NOW(), NOW(), TRUE,
             NOW(), NOW()
         )
@@ -124,15 +124,15 @@ def _upsert_job(cur: psycopg.Cursor, j: NormalizedJob, company_id: str) -> tuple
         """,
         (
             j.dedup_key, j.title_original, j.title_normalized, j.description_md,
-            j.apply_url, j.canonical_url, company_id,
+            j.apply_url, company_id,
             j.is_us_only, j.is_remote_anywhere, j.allowed_regions,
             j.timezone_min_utc_offset, j.timezone_max_utc_offset,
             j.hourly_min_usd, j.hourly_max_usd, j.salary_min_usd, j.salary_max_usd,
             [p.value for p in j.payment_types], [c.value for c in j.contract_types],
-            j.is_entry_level, j.required_experience_years, j.has_visa_sponsorship,
+            j.is_entry_level, j.required_experience_years,
             [m.value for m in j.payment_methods_hint],
-            j.is_scam_suspected, j.scam_reasons, j.is_nsfw,
-            j.posted_at, j.expires_at,
+            j.is_scam_suspected, j.scam_reasons,
+            j.posted_at,
         ),
     )
     row = cur.fetchone()
@@ -160,8 +160,8 @@ def _attach_skills(cur: psycopg.Cursor, job_id: str, skill_slugs: list[str]) -> 
         skill_id = _upsert_skill(cur, slug)
         cur.execute(
             """
-            INSERT INTO job_skills ("jobId", "skillId", strength)
-            VALUES (%s, %s, 1.0)
+            INSERT INTO job_skills ("jobId", "skillId")
+            VALUES (%s, %s)
             ON CONFLICT ("jobId", "skillId") DO NOTHING;
             """,
             (job_id, skill_id),

@@ -37,12 +37,9 @@ export default function GlossaryPage() {
             <dl className="space-y-6">
               {grouped[cat].map((t) => (
                 <div key={t.slug} id={t.slug}>
-                  <dt className="font-semibold" dangerouslySetInnerHTML={{ __html: t.term }} />
+                  <dt className="font-semibold">{t.term}</dt>
                   <dd className="text-sm text-ink-400 italic mt-0.5">{t.short}</dd>
-                  <dd
-                    className="text-ink-500 mt-2"
-                    dangerouslySetInnerHTML={{ __html: t.long }}
-                  />
+                  <dd className="text-ink-500 mt-2">{t.long}</dd>
                 </div>
               ))}
             </dl>

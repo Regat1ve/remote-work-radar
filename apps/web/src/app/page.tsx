@@ -127,14 +127,14 @@ export default function LandingPage() {
       <section className="rounded-lg border border-ink-200 dark:border-ink-700 p-6">
         <h2 className="text-2xl font-semibold mb-3">Self-host it</h2>
         <p className="text-ink-500 mb-4">
-          The whole stack is one repo. Bring a Postgres URL and a few env vars.
+          The whole stack is one repo. Bring a free Postgres URL (Neon or Supabase both work) and a
+          few env vars.
         </p>
         <pre className="bg-ink-100 dark:bg-ink-900 rounded p-4 text-sm overflow-x-auto font-mono">
 {`git clone https://github.com/Regat1ve/remote-work-radar
 cd remote-work-radar
 pnpm install
-docker compose up -d
-cp .env.example .env
+cp .env.example .env         # paste your DATABASE_URL
 pnpm db:migrate
 pnpm etl:once
 pnpm dev`}

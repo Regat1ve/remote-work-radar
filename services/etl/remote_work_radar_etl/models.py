@@ -70,7 +70,6 @@ class NormalizedJob(BaseModel):
     title_normalized: str
     description_md: str
     apply_url: str
-    canonical_url: str | None = None
 
     # Company
     company_name: str
@@ -94,17 +93,14 @@ class NormalizedJob(BaseModel):
     # Beginner signals
     is_entry_level: bool = False
     required_experience_years: int | None = None
-    has_visa_sponsorship: bool = False
     payment_methods_hint: list[PaymentMethodHint] = Field(default_factory=list)
 
     # Trust
     is_scam_suspected: bool = False
     scam_reasons: list[str] = Field(default_factory=list)
-    is_nsfw: bool = False
 
     # Skills (slugs)
     skills: list[str] = Field(default_factory=list)
 
     # Lifecycle
     posted_at: datetime | None = None
-    expires_at: datetime | None = None
