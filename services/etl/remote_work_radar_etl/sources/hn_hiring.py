@@ -35,7 +35,12 @@ USER_AGENT = "remote-work-radar/0.0.1 (+https://github.com/Regat1ve/remote-work-
 ALGOLIA_SEARCH_BY_DATE = "https://hn.algolia.com/api/v1/search_by_date"
 ALGOLIA_ITEM = "https://hn.algolia.com/api/v1/items/{id}"
 
-_HEADER_LINE = re.compile(r"^([^|]+?)\s*\|\s*([^|]+?)(?:\s*\|\s*(.+))?$")
+_ROLE_KEYWORDS = re.compile(
+    r"engineer|developer|dev\b|swe\b|architect|manager|founder|scientist|"
+    r"analyst|designer|hire|hiring|looking|role|position|intern|lead|"
+    r"director|CTO|VP|writer|marketer|sales|ops|SRE",
+    re.IGNORECASE,
+)
 
 
 def _find_latest_thread_id(client: httpx.Client) -> int | None:
@@ -68,18 +73,29 @@ def _find_latest_thread_id(client: httpx.Client) -> int | None:
 def _parse_first_line(text: str) -> tuple[str, str]:
     """Best-effort split of the first comment line into (company, title).
 
-    HN convention: 'COMPANY | ROLE | LOCATION | STACK'
-    Falls back to ('Unknown', first line).
+    HN posters use pipe-separated headers but the token order drifts:
+    'COMPANY | ROLE | LOCATION' is common, but 'COMPANY | LOCATION | ROLE'
+    and 'COMPANY | REMOTE | ROLE | STACK' also happen. We take token 0 as the
+    company and, from the rest, pick the one that reads like a role (contains
+    'engineer', 'developer', 'hire', 'looking', etc). Fallback: token 1.
 
     HN API returns comment text as HTML with entities (`&#x27;` for apostrophe etc.).
     We run it through BeautifulSoup first so downstream sees plain unicode.
     """
     plain = BeautifulSoup(text or "", "lxml").get_text(separator="\n")
     first_line = plain.strip().split("\n", 1)[0].strip()
-    m = _HEADER_LINE.match(first_line)
-    if m:
-        return m.group(1).strip(), m.group(2).strip()
-    return "Unknown", first_line[:200] if first_line else "Untitled HN post"
+    if not first_line:
+        return "Unknown", "Untitled HN post"
+
+    parts = [p.strip() for p in first_line.split("|") if p.strip()]
+    if len(parts) < 2:
+        return "Unknown", first_line[:200]
+
+    company = parts[0]
+    for candidate in parts[1:]:
+        if _ROLE_KEYWORDS.search(candidate):
+            return company, candidate
+    return company, parts[1]
 
 
 def _walk_top_comments(node: dict[str, Any]) -> list[dict[str, Any]]:
