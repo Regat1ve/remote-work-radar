@@ -1,9 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useMemo } from "react";
 import type { JobCardShape } from "@/lib/jobs-query";
 
+// Filter state lives in the URL — shareable, back-button-safe, survives reload.
+// hideUsOnly defaults to true; the param is written as "0" only when the user
+// flips it off. Same trick for showScamSuspected default false.
 type Filters = {
   hideUsOnly: boolean;
   showScamSuspected: boolean;
@@ -12,13 +16,15 @@ type Filters = {
   search: string;
 };
 
-const INITIAL: Filters = {
-  hideUsOnly: true,
-  showScamSuspected: false,
-  entryLevelOnly: false,
-  minHourly: "",
-  search: "",
-};
+function readFilters(sp: URLSearchParams): Filters {
+  return {
+    hideUsOnly: sp.get("hideUsOnly") !== "0",
+    showScamSuspected: sp.get("showScamSuspected") === "1",
+    entryLevelOnly: sp.get("entryLevelOnly") === "1",
+    minHourly: sp.get("minHourly") ?? "",
+    search: sp.get("search") ?? "",
+  };
+}
 
 export function JobsClient({
   jobs,
@@ -27,7 +33,27 @@ export function JobsClient({
   jobs: JobCardShape[];
   totalCount: number;
 }) {
-  const [f, setF] = useState<Filters>(INITIAL);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const f = readFilters(new URLSearchParams(searchParams.toString()));
+
+  function update(next: Partial<Filters>) {
+    const sp = new URLSearchParams(searchParams.toString());
+    const merged = { ...f, ...next };
+    if (merged.hideUsOnly) sp.delete("hideUsOnly");
+    else sp.set("hideUsOnly", "0");
+    if (merged.showScamSuspected) sp.set("showScamSuspected", "1");
+    else sp.delete("showScamSuspected");
+    if (merged.entryLevelOnly) sp.set("entryLevelOnly", "1");
+    else sp.delete("entryLevelOnly");
+    if (merged.minHourly) sp.set("minHourly", merged.minHourly);
+    else sp.delete("minHourly");
+    if (merged.search) sp.set("search", merged.search);
+    else sp.delete("search");
+    const qs = sp.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }
 
   const filtered = useMemo(() => {
     return jobs.filter((j) => {
@@ -54,7 +80,7 @@ export function JobsClient({
               <input
                 type="checkbox"
                 checked={f.hideUsOnly}
-                onChange={(e) => setF({ ...f, hideUsOnly: e.target.checked })}
+                onChange={(e) => update({ hideUsOnly: e.target.checked })}
               />
               Hide US-only postings
             </label>
@@ -62,7 +88,7 @@ export function JobsClient({
               <input
                 type="checkbox"
                 checked={f.entryLevelOnly}
-                onChange={(e) => setF({ ...f, entryLevelOnly: e.target.checked })}
+                onChange={(e) => update({ entryLevelOnly: e.target.checked })}
               />
               Entry-level only
             </label>
@@ -70,7 +96,7 @@ export function JobsClient({
               <input
                 type="checkbox"
                 checked={f.showScamSuspected}
-                onChange={(e) => setF({ ...f, showScamSuspected: e.target.checked })}
+                onChange={(e) => update({ showScamSuspected: e.target.checked })}
               />
               Show suspected scams (default: hidden)
             </label>
@@ -84,7 +110,7 @@ export function JobsClient({
           <input
             type="number"
             value={f.minHourly}
-            onChange={(e) => setF({ ...f, minHourly: e.target.value })}
+            onChange={(e) => update({ minHourly: e.target.value })}
             placeholder="30"
             className="w-full rounded-md border border-ink-200 dark:border-ink-700 bg-transparent px-3 py-2 text-sm"
           />
@@ -95,7 +121,7 @@ export function JobsClient({
           <input
             type="text"
             value={f.search}
-            onChange={(e) => setF({ ...f, search: e.target.value })}
+            onChange={(e) => update({ search: e.target.value })}
             placeholder="nextjs, python, ..."
             className="w-full rounded-md border border-ink-200 dark:border-ink-700 bg-transparent px-3 py-2 text-sm"
           />
