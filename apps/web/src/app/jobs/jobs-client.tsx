@@ -146,8 +146,7 @@ export function JobsClient({
           </div>
 
           <div className="text-xs text-ink-400 pt-4 border-t border-ink-200 dark:border-ink-700">
-            {totalCount} dev / AI-engineer roles total. Non-dev remote work (support, HR, ops)
-            is filtered out.
+            {totalCount} remote jobs total. Use the tabs above to narrow to a role type.
             <br />
             ETL refreshes every 15 minutes.
           </div>

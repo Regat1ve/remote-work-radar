@@ -10,7 +10,6 @@ export type JobsFilters = {
   minHourly?: number;
   search?: string;
   limit?: number;
-  includeNonDev?: boolean;
   category?: CategoryKey;
 };
 
@@ -46,43 +45,6 @@ export type JobDetail = JobCardShape & {
   sourceUrl: string;
 };
 
-// Substrings ILIKE'd against Job.titleOriginal. Short tokens like "CTO", "AI",
-// "SRE", "SWE" are intentionally excluded — as substrings they match "direCTOr",
-// "detAIled", etc. Devs post their title with a full word almost always, so the
-// long tokens below cover the real signal without the false positives.
-const DEV_TITLE_KEYWORDS = [
-  "engineer",
-  "developer",
-  "programmer",
-  "coder",
-  "architect",
-  "founding",
-  "technologist",
-  "devops",
-  "LLM",
-  "data scientist",
-  "research scientist",
-  "applied scientist",
-  "machine learning",
-  "technical lead",
-  "tech lead",
-  "product engineer",
-  "front-end",
-  "back-end",
-  "full-stack",
-  "fullstack",
-  "backend",
-  "frontend",
-];
-
-function devRoleClause(): Prisma.JobWhereInput {
-  return {
-    OR: DEV_TITLE_KEYWORDS.map((kw) => ({
-      titleOriginal: { contains: kw, mode: "insensitive" as const },
-    })),
-  };
-}
-
 function formatPostedAt(d: Date | null): string {
   if (!d) return "recently";
   const diffMs = Date.now() - d.getTime();
@@ -96,10 +58,6 @@ function formatPostedAt(d: Date | null): string {
 
 function baseWhere(filters: JobsFilters): Prisma.JobWhereInput {
   const and: Prisma.JobWhereInput[] = [];
-
-  if (!filters.includeNonDev) {
-    and.push(devRoleClause());
-  }
 
   if (filters.category) {
     const cat = CATEGORIES.find((c) => c.key === filters.category);
