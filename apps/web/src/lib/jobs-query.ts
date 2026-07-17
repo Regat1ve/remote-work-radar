@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@rwr/db";
 import type { Prisma } from "@rwr/db";
+import { CATEGORIES, type CategoryKey } from "./categories";
 
 export type JobsFilters = {
   hideUsOnly?: boolean;
@@ -10,6 +11,7 @@ export type JobsFilters = {
   search?: string;
   limit?: number;
   includeNonDev?: boolean;
+  category?: CategoryKey;
 };
 
 export type JobCardShape = {
@@ -97,6 +99,17 @@ function baseWhere(filters: JobsFilters): Prisma.JobWhereInput {
 
   if (!filters.includeNonDev) {
     and.push(devRoleClause());
+  }
+
+  if (filters.category) {
+    const cat = CATEGORIES.find((c) => c.key === filters.category);
+    if (cat) {
+      and.push({
+        OR: cat.keywords.map((kw) => ({
+          titleOriginal: { contains: kw, mode: "insensitive" as const },
+        })),
+      });
+    }
   }
 
   if (filters.search) {
