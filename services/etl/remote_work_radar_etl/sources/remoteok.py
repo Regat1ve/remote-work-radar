@@ -9,6 +9,7 @@ description, location, salary_min, salary_max, apply_url, url.
 
 from __future__ import annotations
 
+import html
 from datetime import UTC, datetime
 from typing import Any
 
@@ -52,8 +53,8 @@ def fetch() -> list[RawJob]:
                 source_slug="remoteok",
                 external_id=job_id,
                 source_url=j.get("url") or f"https://remoteok.com/remote-jobs/{j.get('slug', job_id)}",
-                title=str(j.get("position", "")),
-                company_name=str(j.get("company", "Unknown")),
+                title=html.unescape(str(j.get("position", ""))),
+                company_name=html.unescape(str(j.get("company", "Unknown"))),
                 description_html=str(j.get("description", "")),
                 posted_at=_to_datetime(j.get("epoch")),
                 apply_url=j.get("apply_url") or j.get("url"),
