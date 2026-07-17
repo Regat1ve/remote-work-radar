@@ -128,7 +128,9 @@ export function JobsClient({
         </div>
 
         <div className="text-xs text-ink-400 pt-4 border-t border-ink-200 dark:border-ink-700">
-          {totalCount} active jobs in database. Showing the {jobs.length} newest.
+          {totalCount} dev / AI-engineer roles in database. Showing the {jobs.length} newest.
+          <br />
+          Non-dev remote work (support, HR, ops) is filtered out.
           <br />
           ETL refreshes every 15 minutes.
         </div>
@@ -221,14 +223,12 @@ function JobCard({ job }: { job: JobCardShape }) {
           Seen on: {job.sources.join(", ")}
         </p>
         {!job.isScamSuspected && (
-          <a
-            href={job.applyUrl}
-            target="_blank"
-            rel="noreferrer"
+          <Link
+            href={`/jobs/${job.id}`}
             className="text-accent-600 font-medium hover:underline"
           >
-            Apply →
-          </a>
+            Prep & apply →
+          </Link>
         )}
       </div>
     </article>
