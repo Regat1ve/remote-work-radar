@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   title: "remote-work-radar — remote jobs for devs Upwork won't accept",
   description:
     "OSS job aggregator for developers locked out of Upwork, Mercor, Deel, and Contra. Beginner-friendly. Bring your own Claude Code.",
-  metadataBase: new URL("https://remote-work-radar.vercel.app"),
+  metadataBase: new URL("https://remote-work-radar-web-g6sb.vercel.app"),
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
