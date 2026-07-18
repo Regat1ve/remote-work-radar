@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { auth } from "@/auth";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -9,7 +10,8 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://github.com/Regat1ve/remote-work-radar"),
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const session = await auth();
   return (
     <html lang="en">
       <body>
@@ -18,7 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Link href="/" className="font-mono text-sm font-semibold">
               remote-work-radar
             </Link>
-            <nav className="flex gap-6 text-sm">
+            <nav className="flex items-center gap-6 text-sm">
               <Link href="/jobs" className="hover:text-accent-600">
                 Jobs
               </Link>
@@ -39,6 +41,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               >
                 GitHub
               </a>
+              {session?.user ? (
+                <Link
+                  href="/me"
+                  className="rounded-md bg-ink-100 dark:bg-ink-800 px-3 py-1 hover:bg-ink-200 dark:hover:bg-ink-700"
+                >
+                  {session.user.name?.split(" ")[0] ?? "You"} ★
+                </Link>
+              ) : (
+                <Link
+                  href="/signin"
+                  className="rounded-md bg-accent-600 text-white px-3 py-1 hover:bg-accent-500"
+                >
+                  Sign in
+                </Link>
+              )}
             </nav>
           </div>
         </header>

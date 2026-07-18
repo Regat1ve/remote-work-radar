@@ -1,8 +1,26 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { auth } from "@/auth";
+import { prisma } from "@rwr/db";
 import { getJob, type JobDetail } from "@/lib/jobs-query";
 
 export const dynamic = "force-dynamic";
+
+async function toggleSave(userId: string, jobId: string, saved: boolean) {
+  "use server";
+  if (saved) {
+    await prisma.savedJob.delete({ where: { userId_jobId: { userId, jobId } } }).catch(() => {});
+  } else {
+    await prisma.savedJob.upsert({
+      where: { userId_jobId: { userId, jobId } },
+      create: { userId, jobId },
+      update: {},
+    });
+  }
+  revalidatePath(`/jobs/${jobId}`);
+  revalidatePath("/me");
+}
 
 export default async function JobDetailPage({
   params,
@@ -10,8 +28,18 @@ export default async function JobDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const job = await getJob(id);
+  const [job, session] = await Promise.all([getJob(id), auth()]);
   if (!job) notFound();
+
+  const userId = session?.user?.id;
+  const isSaved = userId
+    ? Boolean(
+        await prisma.savedJob.findUnique({
+          where: { userId_jobId: { userId, jobId: job.id } },
+          select: { userId: true },
+        }),
+      )
+    : false;
 
   const advice = buildAdvice(job);
 
@@ -139,7 +167,7 @@ export default async function JobDetailPage({
           </ul>
         </div>
 
-        <div className="pt-4 border-t border-accent-200 dark:border-accent-700">
+        <div className="pt-4 border-t border-accent-200 dark:border-accent-700 flex items-center gap-3 flex-wrap">
           <a
             href={job.applyUrl}
             target="_blank"
@@ -148,6 +176,32 @@ export default async function JobDetailPage({
           >
             Open apply on {sourceLabel(job.sources[0])} →
           </a>
+          {userId ? (
+            <form
+              action={async () => {
+                "use server";
+                await toggleSave(userId, job.id, isSaved);
+              }}
+            >
+              <button
+                type="submit"
+                className={`rounded px-3 py-2 text-sm font-medium border ${
+                  isSaved
+                    ? "border-accent-600 text-accent-600 bg-white dark:bg-ink-900"
+                    : "border-ink-200 dark:border-ink-700 hover:border-accent-600"
+                }`}
+              >
+                {isSaved ? "★ Saved" : "☆ Save to shortlist"}
+              </button>
+            </form>
+          ) : (
+            <Link
+              href="/signin"
+              className="text-sm text-ink-500 hover:text-accent-600"
+            >
+              Sign in to star this →
+            </Link>
+          )}
         </div>
       </section>
 
