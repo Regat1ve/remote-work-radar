@@ -52,14 +52,90 @@ export default function LandingPage() {
             </p>
           </div>
           <div className="rounded-lg border border-ink-200 dark:border-ink-700 p-5">
-            <h3 className="font-semibold mb-2">Claude Code users</h3>
+            <h3 className="font-semibold mb-2">Claude Desktop users</h3>
             <p className="text-sm text-ink-500 leading-relaxed">
-              The MCP server lets Claude Code do the boring parts: search jobs matching your
-              profile, score fit, draft cover letters, and track which ones you applied to. Bring
-              your own model.
+              The MCP server is live. Point Claude Desktop at your local Postgres and it can
+              search jobs, score fit, draft cover letters, and save the ones worth following up on
+              — without leaving the chat. See below.
             </p>
           </div>
         </div>
+      </section>
+
+      <section className="rounded-lg border border-accent-600/40 bg-accent-600/5 p-6">
+        <p className="mb-2 inline-block rounded-full bg-accent-600 text-white px-3 py-1 text-xs font-medium">
+          Flagship feature
+        </p>
+        <h2 className="text-2xl font-semibold mb-3">
+          Talk to your job feed from Claude Desktop
+        </h2>
+        <p className="text-ink-500 mb-5 max-w-3xl leading-relaxed">
+          Every other remote job board is a website you scroll. This one ships an MCP server. Build
+          it, drop a snippet into <code className="text-sm">claude_desktop_config.json</code>,
+          restart Claude Desktop, and the aggregated feed is now a tool your model can call —
+          search it, score fit against your skills, draft a cover letter, save the ones worth
+          following up on. No login, no scraping session, no copy-paste from a browser tab.
+        </p>
+        <pre className="bg-ink-100 dark:bg-ink-900 rounded p-4 text-sm overflow-x-auto font-mono mb-5">
+{`{
+  "mcpServers": {
+    "remote-work-radar": {
+      "command": "node",
+      "args": ["/absolute/path/to/remote-work-radar/apps/mcp/dist/index.js"],
+      "env": {
+        "DATABASE_URL": "postgresql://user:pass@host/db?sslmode=require"
+      }
+    }
+  }
+}`}
+        </pre>
+        <div className="grid gap-4 md:grid-cols-2 mb-5">
+          <div>
+            <h3 className="text-sm font-semibold mb-2 uppercase tracking-wide text-ink-500">
+              Finding &amp; scoring
+            </h3>
+            <ul className="space-y-1 text-sm">
+              <li>
+                <code>search_jobs</code> — filter by category, query, hourly, entry-level
+              </li>
+              <li>
+                <code>get_job</code> — full detail + parsed attributes
+              </li>
+              <li>
+                <code>score_fit</code> — deterministic 0–100 fit against your skills
+              </li>
+              <li>
+                <code>draft_cover_letter</code> — pre-filled with role / stack / your rate
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold mb-2 uppercase tracking-wide text-ink-500">
+              Shortlist
+            </h3>
+            <ul className="space-y-1 text-sm">
+              <li>
+                <code>list_saved</code> — pull your saved shortlist
+              </li>
+              <li>
+                <code>save_job</code> — bookmark a posting (with a note)
+              </li>
+              <li>
+                <code>unsave_job</code> — remove one
+              </li>
+            </ul>
+          </div>
+        </div>
+        <p className="text-sm">
+          Full docs, example prompts, and troubleshooting in{" "}
+          <a
+            href="https://github.com/Regat1ve/remote-work-radar/blob/master/apps/mcp/README.md"
+            className="underline font-medium"
+          >
+            apps/mcp/README.md
+          </a>
+          .
+        </p>
       </section>
 
       <section>
@@ -125,6 +201,44 @@ export default function LandingPage() {
             </div>
           </li>
         </ol>
+      </section>
+
+      <section>
+        <h2 className="text-2xl font-semibold mb-6">See it in action</h2>
+        <div className="grid gap-6 md:grid-cols-3">
+          <figure className="rounded-lg border border-ink-200 dark:border-ink-700 overflow-hidden">
+            <img
+              src="/screenshots/jobs-feed.jpg"
+              alt="Jobs feed with category tabs and filters"
+              className="w-full h-auto block"
+            />
+            <figcaption className="p-3 text-sm text-ink-500 leading-relaxed">
+              /jobs — 9 category tabs, US-only hidden by default, hourly filter, timezone parse.
+            </figcaption>
+          </figure>
+          <figure className="rounded-lg border border-ink-200 dark:border-ink-700 overflow-hidden">
+            <img
+              src="/screenshots/prep-page.png"
+              alt="Prep page for a single job posting"
+              className="w-full h-auto block bg-ink-100 dark:bg-ink-900"
+            />
+            <figcaption className="p-3 text-sm text-ink-500 leading-relaxed">
+              Prep page — red flags detected, cover letter starter, questions to ask, fit
+              checkpoints. Same data feeds the MCP tools.
+            </figcaption>
+          </figure>
+          <figure className="rounded-lg border border-ink-200 dark:border-ink-700 overflow-hidden">
+            <img
+              src="/screenshots/mcp-in-claude.png"
+              alt="Claude Desktop calling the remote-work-radar MCP server"
+              className="w-full h-auto block bg-ink-100 dark:bg-ink-900"
+            />
+            <figcaption className="p-3 text-sm text-ink-500 leading-relaxed">
+              Claude Desktop calling <code>search_jobs</code> and <code>score_fit</code> against
+              the local feed — no browser tab open.
+            </figcaption>
+          </figure>
+        </div>
       </section>
 
       <section className="rounded-lg border border-ink-200 dark:border-ink-700 p-6">

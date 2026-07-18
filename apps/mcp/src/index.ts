@@ -10,6 +10,9 @@
  *   - get_job(id)
  *   - score_fit(jobId, skills[], targetHourly?)
  *   - draft_cover_letter(jobId, userName, userPortfolio?, oneLineProject?)
+ *   - list_saved(userId)
+ *   - save_job(userId, jobId, note?)
+ *   - unsave_job(userId, jobId)
  */
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -113,6 +116,21 @@ const DraftLetterInput = z.object({
     .string()
     .optional()
     .describe("One line about a project you shipped, to lead with."),
+});
+
+const ListSavedInput = z.object({
+  userId: z.string().describe("The user id whose saved jobs to list."),
+});
+
+const SaveJobInput = z.object({
+  userId: z.string(),
+  jobId: z.string(),
+  note: z.string().optional().describe("Optional personal note to attach."),
+});
+
+const UnsaveJobInput = z.object({
+  userId: z.string(),
+  jobId: z.string(),
 });
 
 function jsonToolResult(payload: unknown, help: string) {
@@ -295,6 +313,63 @@ ${input.userName}`,
   };
 }
 
+async function listSaved(userId: string) {
+  // SavedJob has no `job` relation in the schema — fetch jobs in a second query.
+  const saved = await prisma.savedJob.findMany({
+    where: { userId },
+    orderBy: { savedAt: "desc" },
+  });
+  if (saved.length === 0) return [];
+
+  const jobs = await prisma.job.findMany({
+    where: { id: { in: saved.map((s) => s.jobId) } },
+    include: {
+      company: true,
+      skills: { include: { skill: true } },
+      sourceRefs: { include: { source: true } },
+    },
+  });
+  const jobById = new Map(jobs.map((r) => [r.id, r]));
+
+  return saved.flatMap((s) => {
+    const r = jobById.get(s.jobId);
+    if (!r) return []; // job deleted; skip
+    return [{
+      id: r.id,
+      title: r.titleOriginal,
+      company: r.company.name,
+      postedAt: r.postedAt,
+      hourlyMin: r.hourlyMinUsd ? Number(r.hourlyMinUsd) : null,
+      hourlyMax: r.hourlyMaxUsd ? Number(r.hourlyMaxUsd) : null,
+      isEntryLevel: r.isEntryLevel,
+      isRemoteAnywhere: r.isRemoteAnywhere,
+      isUsOnly: r.isUsOnly,
+      regions: r.allowedRegions,
+      skills: r.skills.map((js) => js.skill.slug),
+      sources: r.sourceRefs.map((sr) => sr.source.slug),
+      applyUrl: r.applyUrl,
+      savedAt: s.savedAt,
+      note: s.note,
+    }];
+  });
+}
+
+async function saveJob(input: z.infer<typeof SaveJobInput>) {
+  const row = await prisma.savedJob.upsert({
+    where: { userId_jobId: { userId: input.userId, jobId: input.jobId } },
+    create: { userId: input.userId, jobId: input.jobId, note: input.note },
+    update: { note: input.note },
+  });
+  return { userId: row.userId, jobId: row.jobId, savedAt: row.savedAt, note: row.note };
+}
+
+async function unsaveJob(input: z.infer<typeof UnsaveJobInput>) {
+  const res = await prisma.savedJob.deleteMany({
+    where: { userId: input.userId, jobId: input.jobId },
+  });
+  return { removed: res.count };
+}
+
 const server = new Server(
   { name: "remote-work-radar", version: "0.0.1" },
   { capabilities: { tools: {} } },
@@ -370,6 +445,43 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ["jobId", "userName"],
       },
     },
+    {
+      name: "list_saved",
+      description:
+        "List a user's saved jobs, newest first. Same row shape as search_jobs plus savedAt and optional note.",
+      inputSchema: {
+        type: "object",
+        properties: { userId: { type: "string" } },
+        required: ["userId"],
+      },
+    },
+    {
+      name: "save_job",
+      description:
+        "Save (star) a job for a user. Idempotent — re-calling with a new note updates the note.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          userId: { type: "string" },
+          jobId: { type: "string" },
+          note: { type: "string" },
+        },
+        required: ["userId", "jobId"],
+      },
+    },
+    {
+      name: "unsave_job",
+      description:
+        "Unsave a job for a user. Idempotent — no-op if the row does not exist.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          userId: { type: "string" },
+          jobId: { type: "string" },
+        },
+        required: ["userId", "jobId"],
+      },
+    },
   ],
 }));
 
@@ -404,6 +516,27 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
       const input = DraftLetterInput.parse(args ?? {});
       const out = await draftCoverLetter(input);
       return jsonToolResult(out, "Templated cover letter — edit the [PLACEHOLDERS] before sending.");
+    }
+    case "list_saved": {
+      const input = ListSavedInput.parse(args ?? {});
+      const rows = await listSaved(input.userId);
+      return jsonToolResult(
+        rows,
+        `Found ${rows.length} saved jobs. Same shape as search_jobs, plus savedAt and note.`,
+      );
+    }
+    case "save_job": {
+      const input = SaveJobInput.parse(args ?? {});
+      const out = await saveJob(input);
+      return jsonToolResult(out, "Job saved. Call list_saved to see the full starred list.");
+    }
+    case "unsave_job": {
+      const input = UnsaveJobInput.parse(args ?? {});
+      const out = await unsaveJob(input);
+      return jsonToolResult(
+        out,
+        out.removed ? "Job unsaved." : "Nothing to unsave — that row wasn't in the saved list.",
+      );
     }
     default:
       return jsonToolResult({ error: "unknown tool" }, `Unknown tool: ${name}`);

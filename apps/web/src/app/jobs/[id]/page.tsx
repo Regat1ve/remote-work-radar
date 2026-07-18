@@ -7,10 +7,17 @@ import { getJob, type JobDetail } from "@/lib/jobs-query";
 
 export const dynamic = "force-dynamic";
 
-async function toggleSave(userId: string, jobId: string, saved: boolean) {
+async function toggleSave(jobId: string, saved: boolean) {
   "use server";
+  const s = await auth();
+  if (!s?.user?.id) throw new Error("unauthorized");
+  const userId = s.user.id;
   if (saved) {
-    await prisma.savedJob.delete({ where: { userId_jobId: { userId, jobId } } }).catch(() => {});
+    try {
+      await prisma.savedJob.delete({ where: { userId_jobId: { userId, jobId } } });
+    } catch (e: unknown) {
+      if ((e as { code?: string }).code !== "P2025") throw e;
+    }
   } else {
     await prisma.savedJob.upsert({
       where: { userId_jobId: { userId, jobId } },
@@ -178,10 +185,7 @@ export default async function JobDetailPage({
           </a>
           {userId ? (
             <form
-              action={async () => {
-                "use server";
-                await toggleSave(userId, job.id, isSaved);
-              }}
+              action={toggleSave.bind(null, job.id, isSaved)}
             >
               <button
                 type="submit"
