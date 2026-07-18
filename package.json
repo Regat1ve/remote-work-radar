@@ -21,7 +21,7 @@
     "etl:loop": "cd services/etl && python -m remote_work_radar_etl.main --loop"
   },
   "engines": {
-    "node": ">=22",
+    "node": "22.x",
     "pnpm": ">=11"
   },
   "packageManager": "pnpm@11.0.8",
