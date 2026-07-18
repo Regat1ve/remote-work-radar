@@ -1,0 +1,27 @@
+{
+  "name": "@rwr/mcp",
+  "version": "0.0.1",
+  "description": "Model Context Protocol server for remote-work-radar — search remote jobs, score fit, draft cover letters from Claude Desktop / Cursor / any MCP client.",
+  "bin": {
+    "rwr-mcp": "./dist/index.js"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsup src/index.ts --format esm --dts --clean --shims",
+    "start": "node dist/index.js"
+  },
+  "keywords": ["mcp", "claude", "jobs", "remote-work", "aggregator"],
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@rwr/db": "workspace:*",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}

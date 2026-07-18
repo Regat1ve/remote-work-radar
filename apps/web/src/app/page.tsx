@@ -73,7 +73,9 @@ export default function LandingPage() {
               <p className="font-medium">Feeds get pulled every 15 minutes.</p>
               <p className="text-sm text-ink-500 mt-1">
                 WeWorkRemotely, RemoteOK, HN &quot;Who is hiring?&quot;, and more. Each posting is
-                normalized into a common shape — timezone, hourly range, contract type, skills.
+                normalized into a common shape — timezone, hourly range, contract type, skills — and
+                dropped into one of nine role categories (AI/ML, Frontend, Backend, Fullstack,
+                DevOps, Data, Mobile, Founding/Lead) so the feed reads by intent, not by scroll.
               </p>
             </div>
           </li>
@@ -113,11 +115,12 @@ export default function LandingPage() {
               4
             </span>
             <div>
-              <p className="font-medium">Cover letters get drafted honestly.</p>
+              <p className="font-medium">Every posting gets a prep page.</p>
               <p className="text-sm text-ink-500 mt-1">
-                The templates open with &quot;I&apos;m early in my remote career and here&apos;s
-                why this role fits&quot; — not fake seniority. Honesty converts better than
-                fabrication.
+                Click any job → red flags detected in that posting, cover letter starter pre-filled
+                with company / role / detected stack, questions to ask them in the reply, fit
+                checkpoints (transparent rate, timezone parse, entry-level signal). Then the apply
+                button opens the source. Same data is exposed to Claude Desktop via the MCP server.
               </p>
             </div>
           </li>

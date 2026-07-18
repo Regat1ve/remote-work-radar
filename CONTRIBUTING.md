@@ -31,6 +31,18 @@ cd services/etl
 python -m pytest tests/
 ```
 
+## MCP server changes
+
+MCP tools live in `apps/mcp/src/index.ts`. If you add a tool:
+
+1. Define its input schema with zod at the top of the file.
+2. Register it in both `ListToolsRequestSchema` (name, description, JSON Schema) and `CallToolRequestSchema` (dispatch case).
+3. Always wrap the result with `jsonToolResult(payload, help)` — the `_help` string is what the MCP client renders back to the user.
+4. Rebuild: `pnpm --filter @rwr/mcp build`.
+5. Add a line to `apps/mcp/README.md`.
+
+MCP tools should be read-only against the shared Postgres. Anything writing per-user data (saved jobs, applied) needs auth — that's a separate PR.
+
 ## Web / DB changes
 
 - Prisma: never `db push`. Always `prisma migrate dev` in dev, `prisma migrate deploy` everywhere else.
