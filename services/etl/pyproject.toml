@@ -16,6 +16,7 @@ dependencies = [
     "structlog>=24.4",
     "typer>=0.15",
     "markdownify>=0.14",
+    "ftfy>=6.3",
 ]
 
 [project.optional-dependencies]

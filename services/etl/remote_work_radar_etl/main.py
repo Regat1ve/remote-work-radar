@@ -15,9 +15,9 @@ import structlog
 import typer
 from dotenv import load_dotenv
 
-from .db import mark_stale_jobs, write_jobs
+from .db import connect, mark_stale_jobs, write_jobs
 from .models import NormalizedJob
-from .normalize import normalize
+from .normalize import normalize, repair_text
 from .sources import REGISTRY
 
 load_dotenv()
@@ -73,6 +73,32 @@ def once(
     else:
         summary = _run_all()
     typer.echo(summary)
+
+
+@app.command()
+def repair() -> None:
+    """One-shot: run ftfy over every existing jobs.descriptionMd row.
+
+    Fixes mojibake in rows we already wrote before the normalize pass had
+    ftfy. Idempotent — running twice touches zero rows.
+    """
+    updated = 0
+    with connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute('SELECT id, "descriptionMd" FROM jobs')
+            rows = cur.fetchall()
+        with conn.cursor() as cur:
+            for row in rows:
+                fixed = repair_text(row["descriptionMd"] or "")
+                if fixed != (row["descriptionMd"] or ""):
+                    cur.execute(
+                        'UPDATE jobs SET "descriptionMd" = %s WHERE id = %s',
+                        (fixed, row["id"]),
+                    )
+                    updated += 1
+        conn.commit()
+    log.info("etl.repair_complete", scanned=len(rows), updated=updated)
+    typer.echo({"scanned": len(rows), "updated": updated})
 
 
 @app.command()

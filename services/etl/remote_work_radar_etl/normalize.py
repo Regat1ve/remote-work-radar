@@ -14,7 +14,7 @@ import unicodedata
 from decimal import Decimal
 
 from bs4 import BeautifulSoup
-from markdownify import markdownify
+from ftfy import fix_text
 
 from .models import (
     ContractType,
@@ -30,14 +30,30 @@ from .models import (
 
 
 def html_to_markdown(html: str) -> str:
-    """Strip HTML, drop scripts/styles, return clean markdown."""
-    soup = BeautifulSoup(html or "", "lxml")
+    """Strip HTML to plain text and repair mojibake.
+
+    Keeps the name for callers, but no longer emits Markdown syntax. UI renders
+    this as plain text (`whitespace-pre-wrap`), so backslash-escaped stars and
+    other markdown noise added by markdownify were surfacing as junk. get_text
+    with newline separators also fixes the "TesterLocation:" run-together bug
+    from block tags with no whitespace between them. ftfy repairs UTF-8 that
+    got decoded as latin-1 upstream (RemoteOK feeds do this on em-dashes,
+    quotes and ellipses).
+    """
+    text = fix_text(html or "")
+    soup = BeautifulSoup(text, "lxml")
     for tag in soup(["script", "style", "noscript"]):
         tag.decompose()
-    md = markdownify(str(soup), heading_style="ATX")
-    # Collapse >2 blank lines
-    md = re.sub(r"\n{3,}", "\n\n", md).strip()
-    return md
+    plain = soup.get_text(separator="\n")
+    plain = fix_text(plain)
+    plain = re.sub(r"[ \t]+\n", "\n", plain)
+    plain = re.sub(r"\n{3,}", "\n\n", plain).strip()
+    return plain
+
+
+def repair_text(s: str) -> str:
+    """Second-pass repair for text already in DB (no source HTML available)."""
+    return re.sub(r"\n{3,}", "\n\n", fix_text(s or "")).strip()
 
 
 def normalize_text(s: str) -> str:
