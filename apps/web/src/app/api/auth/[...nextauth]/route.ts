@@ -1,8 +1,9 @@
 import { handlers } from "@/auth";
+import type { NextRequest } from "next/server";
 
 const { GET: origGET, POST: origPOST } = handlers;
 
-async function withErrorLogging(fn: (req: Request) => Promise<Response>, req: Request): Promise<Response> {
+async function withErrorLogging(fn: (req: NextRequest) => Promise<Response>, req: NextRequest): Promise<Response> {
   try {
     return await fn(req);
   } catch (e) {
@@ -13,5 +14,5 @@ async function withErrorLogging(fn: (req: Request) => Promise<Response>, req: Re
   }
 }
 
-export const GET = (req: Request) => withErrorLogging(origGET, req);
-export const POST = (req: Request) => withErrorLogging(origPOST, req);
+export const GET = (req: NextRequest) => withErrorLogging(origGET, req);
+export const POST = (req: NextRequest) => withErrorLogging(origPOST, req);
