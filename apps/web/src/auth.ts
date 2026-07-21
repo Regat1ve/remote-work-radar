@@ -8,4 +8,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [GitHub],
   session: { strategy: "database" },
   pages: { signIn: "/signin" },
+  debug: true,
+  logger: {
+    error(code, ...rest) {
+      console.error("[auth-error]", code, JSON.stringify(rest, (_k, v) => v instanceof Error ? { name: v.name, message: v.message, stack: v.stack } : v));
+    },
+    warn(code, ...rest) { console.warn("[auth-warn]", code, ...rest); },
+  },
 });
