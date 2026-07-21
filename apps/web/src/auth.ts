@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import GitHub from "next-auth/providers/github";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@rwr/db";
+import { logError } from "@/lib/error-log";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -31,6 +32,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   logger: {
     error(code, ...rest) {
       console.error("[auth-error]", code, JSON.stringify(rest, (_k, v) => v instanceof Error ? { name: v.name, message: v.message, stack: v.stack } : v));
+      void logError(String(code), rest);
     },
     warn(code, ...rest) { console.warn("[auth-warn]", code, ...rest); },
   },
