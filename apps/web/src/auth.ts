@@ -5,7 +5,7 @@ import { prisma } from "@rwr/db";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
-  providers: [GitHub],
+  providers: [GitHub({ checks: ["state"] })],
   session: { strategy: "database" },
   pages: { signIn: "/signin" },
   debug: true,
