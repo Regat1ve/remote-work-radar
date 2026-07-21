@@ -17,8 +17,8 @@
     "db:generate": "pnpm --filter @rwr/db generate",
     "db:migrate": "pnpm --filter @rwr/db migrate",
     "db:studio": "pnpm --filter @rwr/db studio",
-    "etl:once": "cd services/etl && python -m remote_work_radar_etl.main --once",
-    "etl:loop": "cd services/etl && python -m remote_work_radar_etl.main --loop"
+    "etl:once": "cd services/etl && python -m remote_work_radar_etl.main once",
+    "etl:loop": "cd services/etl && python -m remote_work_radar_etl.main loop"
   },
   "engines": {
     "node": "22.x",

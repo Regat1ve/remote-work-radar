@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <body>
         <header className="border-b border-ink-200 dark:border-ink-700">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">

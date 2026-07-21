@@ -1,0 +1,40 @@
+name: etl
+
+# Runs the Python ETL on a schedule. Vercel serverless can't host Python,
+# so cron lives here instead of in vercel.json.
+#
+# Requires repo secret: DATABASE_URL (Neon Postgres, same one Vercel uses).
+
+on:
+  schedule:
+    # Every 30 minutes. GitHub may skip runs under high load; that's fine,
+    # the ETL is idempotent (upsert on dedupKey).
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: etl
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: services/etl/pyproject.toml
+
+      - name: Install ETL package
+        working-directory: services/etl
+        run: pip install -e .
+
+      - name: Run ETL once
+        working-directory: services/etl
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python -m remote_work_radar_etl.main once
